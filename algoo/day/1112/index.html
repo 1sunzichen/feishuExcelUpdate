@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="text/javascript">
+       
+       
+       function delay(time){
+            return new Promise((resolve, reject) => {
+                console.log(`wait ${time}s`)
+                ctime=time
+                if (time==999){
+                    ctime=1
+                }
+                setTimeout(() => {
+                    var audio = document.createElement("video");
+                    if (time!=999){
+                        audio.src = "./5.m4a";
+                    }else{
+                        audio.src = "./4.m4a";
+                    }
+                    audio.play();
+                    resolve()
+
+                }, ctime*1000);
+            })
+        }
+        var arr=[]
+        for(i=0;i<7;i++){
+            // var seconds = Math.floor(Math.random() * 31) + 10;
+            var seconds = Math.floor(Math.random() * 10)+20 ;
+            arr.push(seconds)
+           
+        }
+        arr.push(999)
+        console.log(arr)
+        arr.reduce((pre,cur) => {
+            return pre.then(() => delay(cur))
+        },Promise.resolve())
+    </script>
+</head>
+<body>
+</body>
+</html>
