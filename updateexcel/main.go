@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -38,16 +39,18 @@ type ValueRanges struct {
 	MajorDimension string          `json:"majorDimension"`
 	Range          string          `json:"range"`
 	Revision       int             `json:"revision"`
-	Values         [][][]ValueItem `json:"values"`
+	Values         [][]interface{} `json:"values"`
 }
 
-type ValueItem struct {
-	Link          string `json:"link"`
-	MentionNotify bool   `json:"mentionNotify"`
-	MentionType   int    `json:"mentionType"`
-	Text          string `json:"text"`
-	Token         string `json:"token"`
-	Type          string `json:"type"`
+type Item struct {
+	Link          string `json:"link,omitempty"`
+	MentionNotify bool   `json:"mentionNotify,omitempty"`
+	MentionType   int    `json:"mentionType,omitempty"`
+	Text          string `json:"text,omitempty"`
+	Token         string `json:"token,omitempty"`
+	Type          string `json:"type,omitempty"`
+	Date          string `json:"date,omitempty"`
+	Mark          string `json:"mark,omitempty"`
 }
 
 // SDK 使用文档：https://github.com/larksuite/oapi-sdk-go/tree/v3_main
@@ -116,7 +119,7 @@ func getNewToken() string {
 
 }
 func readData(token string) {
-	url := "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/N5Wts8V9Wh3gXJtyxPvcDbMZnJc/values_batch_get?ranges=5cc663!A2:B6,5cc663!B1:C8&valueRenderOption=FormattedValue&dateTimeRenderOption=FormattedString"
+	url := "https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/N5Wts8V9Wh3gXJtyxPvcDbMZnJc/values_batch_get?ranges=5cc663!A2:D&valueRenderOption=FormattedValue&dateTimeRenderOption=FormattedString"
 
 	// 创建一个HTTP请求
 	req, err := http.NewRequest("GET", url, nil)
@@ -143,14 +146,66 @@ func readData(token string) {
 		fmt.Println("Error reading response body:", err)
 		return
 	}
-	fmt.Println(string(body))
-	// var respExcelData ApiResponse
-	// err = json.Unmarshal([]byte(string(body)), &respExcelData)
-	// if err != nil {
-	// 	fmt.Println("Error parsing JSON:", err)
-	// 	return
-	// }
+	// fmt.Println(string(body))
+	var respExcelData ApiResponse
+	err = json.Unmarshal([]byte(string(body)), &respExcelData)
+	if err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return
+	}
+	var Message []Item
+	for _, value := range respExcelData.Data.ValueRanges[0].Values {
+		jsonData, err := json.Marshal(value[1])
 
+		if err != nil {
+			log.Fatalf("Error marshalling data: %v", err)
+		}
+
+		// 解析 JSON 数据到结构体
+		var result interface{}
+		err = json.Unmarshal(jsonData, &result)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		// 根据结果类型进行处理
+		switch v := result.(type) {
+		case string:
+			for mesindex, _ := range Message {
+				Message[mesindex].Mark = v
+			}
+			fmt.Println("处理字符串:", v)
+		case []interface{}:
+			var parsedData []Item
+			err = json.Unmarshal(jsonData, &parsedData)
+			if err != nil {
+				log.Fatalf("Error unmarshalling data: %v", err)
+			}
+			parsedData[0].Date = value[3].(string)
+			// 使用 parsedData
+			// fmt.Printf("Parsed Data: %+v,%s,%s,%s\n", parsedData[0], parsedData[0].Link, parsedData[0].Text, parsedData[0].Token)
+			Message = append(Message, parsedData[0])
+			fmt.Println("处理切片:", v)
+		default:
+			fmt.Println("其他类型:", v)
+		}
+
+		// var parsedData []Item
+
+		// err = json.Unmarshal(jsonData, &parsedData)
+		// if err != nil {
+		// 	log.Fatalf("Error unmarshalling data: %v", err)
+		// }
+		// parsedData[0].Date = value[3].(string)
+		// // 使用 parsedData
+		// // fmt.Printf("Parsed Data: %+v,%s,%s,%s\n", parsedData[0], parsedData[0].Link, parsedData[0].Text, parsedData[0].Token)
+		// Message = append(Message, parsedData[0])
+		// fmt.Println("Range: ", value[1])
+	}
+	for _, mes := range Message {
+		fmt.Println(mes.Link, mes)
+	}
 	// fmt.Printf("Parsed JSON: %+v\n", respExcelData)
 
 }
